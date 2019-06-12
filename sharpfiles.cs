@@ -33,12 +33,9 @@ public class RecursiveFileProcessor
 		
 		FileSearcher fSearcher = new FileSearcher(maxThreads, outFile);
 		fSearcher.ProcessShares(shares);
-		
 		   
     }
 
-
-   
 }
 
 public class FileSearcher
@@ -104,15 +101,22 @@ public class FileSearcher
 	
 	private void ProcessShare(string path)
 	{
-		ProcessDirectory(path);
+		Queue<String> _Dirs = new Queue<String>();
 		
+		_Dirs.Enqueue( path );
+		
+		while( 0 < _Dirs.Count )
+		{
+			string currDir = _Dirs.Dequeue();
+			ProcessDirectory(currDir, _Dirs);
+		}
 		lock(_CountLock)
 		{
 			_ThreadCount--;
 		}
 	}
 	
-    public void ProcessDirectory(string targetDirectory) 
+    public void ProcessDirectory(string targetDirectory, Queue<String> _Dirs) 
     {
         // Process the list of files found in the directory.
 		try{
@@ -126,7 +130,7 @@ public class FileSearcher
 		try{
 			string [] subdirectoryEntries = Directory.GetDirectories(targetDirectory);
 			foreach(string subdirectory in subdirectoryEntries)
-				ProcessDirectory(subdirectory);
+				_Dirs.Enqueue(subdirectory);
 		}
 		catch{}
     }
