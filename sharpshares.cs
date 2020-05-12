@@ -317,7 +317,7 @@ namespace SharpShares
         {
             var computers = GetComputers();
             Console.WriteLine("[*] Parsed {0} computer objects.", computers.Count);
-            ThreadPool.SetMaxThreads(10, 10);
+            ThreadPool.SetMaxThreads(100, 100);
             if (args.Contains("ips"))
             {
                 GetComputerAddresses(computers);
