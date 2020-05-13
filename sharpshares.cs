@@ -14,6 +14,7 @@ namespace SharpShares
 {
     class Program
     {
+        private Object thisLock = new Object();
         public static Semaphore MaxThreads { get; set; }
 
         [DllImport("Netapi32.dll", SetLastError = true)]
@@ -229,43 +230,16 @@ namespace SharpShares
                         }
                     }
                 }
-                if (unauthorizedShares.Count > 0 || readableShares.Count > 0)
+                if (readableShares.Count > 0)
                 {
-                    if (publicOnly)
+                    string output = ""
+                    foreach (string share in readableShares)
                     {
-                        if (readableShares.Count > 0)
-                        {
-                            string output = string.Format("Shares for {0}:\n", computer);
-                            output += "\t[--- Listable Shares ---]\n";
-                            //Console.WriteLine("Shares for {0}:", computer);
-                            //Console.WriteLine("\t[--- Listable Shares ---]");
-                            foreach (string share in readableShares)
-                            {
-                                output += string.Format("\t\t{0}\n", share);
-                            }
-                            Console.WriteLine(output);
-                        }
+                        output += string.Format("\\\\{0}\\{1}\r\n", computer, share);
                     }
-                    else
+                    lock(thisLock)
                     {
-                        string output = string.Format("Shares for {0}:\n", computer);
-                        if (unauthorizedShares.Count > 0)
-                        {
-                            output += "\t[--- Unreadable Shares ---]\n";
-                            foreach (string share in unauthorizedShares)
-                            {
-                                output += string.Format("\t\t{0}\n", share);
-                            }
-                        }
-                        if (readableShares.Count > 0)
-                        {
-                            output += "\t[--- Listable Shares ---]\n";
-                            foreach (string share in readableShares)
-                            {
-                                output += string.Format("\t\t{0}", share);
-                            }
-                        }
-                        Console.WriteLine(output);
+                        File.AppendAllText(@"shares.txt", output);
                     }
                 }
             }
@@ -288,72 +262,39 @@ namespace SharpShares
 
         static void GetComputerVersions(List<string> computers)
         {
+            output = "";
             foreach(string computer in computers)
             {
-                Console.WriteLine("Comptuer: {0}", computer);
-                string serverName = String.Format("\\\\{0}", computer);
-                Console.WriteLine(serverName);
+                output += String.Format("Computer: {0}\r\n", computer);
                 IntPtr buffer;
                 var ret = NetWkstaGetInfo(serverName, 100, out buffer);
                 var strut_size = Marshal.SizeOf(typeof(WKSTA_INFO_100));
-                Console.WriteLine("Ret is:");
-                Console.WriteLine(ret);
                 if (ret == NERR_Success)
                 {
                     var info = (WKSTA_INFO_100)Marshal.PtrToStructure(buffer, typeof(WKSTA_INFO_100));
                     if (!string.IsNullOrEmpty(info.computer_name))
                     {
-                        Console.WriteLine(info.computer_name);
-                        Console.WriteLine(info.platform_id);
-                        Console.WriteLine(info.ver_major);
-                        Console.WriteLine(info.ver_minor);
-                        Console.WriteLine(info.lan_group);
+                        outinfo.computer_name);
+                        output += String.Format("\t{0}\r\n", info.platform_id);
+                        output += String.Format("\t{0}\r\n",info.ver_major);
+                        output += String.Format("\t{0}\r\n",info.ver_minor);
+                        output += String.Format("\t{0}\r\n",info.lan_group);
                     }
                 }
             }
+            System.IO.File.WriteAllLines(@"systeminfo.txt", computers);
         }
         
         static void Main(string[] args)
         {
             var computers = GetComputers();
+            System.IO.File.WriteAllLines(@"systems.txt", computers);
+            
             Console.WriteLine("[*] Parsed {0} computer objects.", computers.Count);
             ThreadPool.SetMaxThreads(100, 100);
-            if (args.Contains("ips"))
-            {
-                GetComputerAddresses(computers);
-            }
-            else if (args.Contains("shares"))
-            {
-                bool pubOnly = false;
-                if (args.Contains("--public-only"))
-                {
-                    pubOnly = true;
-                }
-                if (args.Length < 2 || (args.Length == 2 && pubOnly))
-                {
-
-                    GetAllShares(computers, pubOnly);
-                }
-                else if (args[1] == "--public-only")
-                {
-                    GetAllShares(computers, true);
-                }
-                else
-                {
-                    Console.WriteLine("Attempting to enumerate shares for: {0}", args[1]);
-                    List<string> comps = new List<string>();
-                    comps.Add(args[1]);
-                    GetAllShares(comps, pubOnly);
-                }
-            }
-            else if (args.Contains("versions"))
-            {
-                GetComputerVersions(computers);
-            }
-            else
-            {
-                Console.WriteLine("Error: Not enough arguments. Please pass \"ips\" or \"shares\".");
-            }
+            //GetComputerAddresses(computers);
+            GetAllShares(computers, pubOnly);
+            GetComputerVersions(computers);
         }
     }
 }
