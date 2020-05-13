@@ -1,20 +1,22 @@
-//Taken from here and modified slightly: https://github.com/djhohnstein/SharpShares
+//Taken from here and modified: https://github.com/djhohnstein/SharpShares
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Net;
 using System.DirectoryServices;
-using System.Security.Principal;
 using System.DirectoryServices.ActiveDirectory;
+using System.IO;
+using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
+using System.Text;
 using System.Threading;
 
 namespace SharpShares
 {
     class Program
     {
-        private Object thisLock = new Object();
+        private static Object thisLock = new Object();
+
         public static Semaphore MaxThreads { get; set; }
 
         [DllImport("Netapi32.dll", SetLastError = true)]
@@ -206,7 +208,7 @@ namespace SharpShares
             return computerNames;
         }
 
-        public static void GetComputerShares(string computer, bool publicOnly = false)
+        public static void GetComputerShares(string computer)
         {
             string[] errors = { "ERROR=53", "ERROR=5" };
             SHARE_INFO_1[] computerShares = EnumNetShares(computer);
@@ -232,7 +234,7 @@ namespace SharpShares
                 }
                 if (readableShares.Count > 0)
                 {
-                    string output = ""
+                    string output = "";
                     foreach (string share in readableShares)
                     {
                         output += string.Format("\\\\{0}\\{1}\r\n", computer, share);
@@ -245,12 +247,12 @@ namespace SharpShares
             }
         }
 
-        public static void GetAllShares(List<string> computers, bool publicOnly = false)
+        public static void GetAllShares(List<string> computers)
         {
             List<Thread> runningThreads = new List<Thread>();
             foreach(string computer in computers)
             {
-                Thread t = new Thread(() => GetComputerShares(computer, publicOnly));
+                Thread t = new Thread(() => GetComputerShares(computer));
                 t.Start();
                 runningThreads.Add(t);
             }
@@ -262,10 +264,11 @@ namespace SharpShares
 
         static void GetComputerVersions(List<string> computers)
         {
-            output = "";
+            String output = "";
             foreach(string computer in computers)
             {
                 output += String.Format("Computer: {0}\r\n", computer);
+		string serverName = String.Format("\\\\{0}", computer);
                 IntPtr buffer;
                 var ret = NetWkstaGetInfo(serverName, 100, out buffer);
                 var strut_size = Marshal.SizeOf(typeof(WKSTA_INFO_100));
@@ -274,7 +277,7 @@ namespace SharpShares
                     var info = (WKSTA_INFO_100)Marshal.PtrToStructure(buffer, typeof(WKSTA_INFO_100));
                     if (!string.IsNullOrEmpty(info.computer_name))
                     {
-                        outinfo.computer_name);
+                        output += String.Format("\t{0}\r\n", info.computer_name);
                         output += String.Format("\t{0}\r\n", info.platform_id);
                         output += String.Format("\t{0}\r\n",info.ver_major);
                         output += String.Format("\t{0}\r\n",info.ver_minor);
@@ -293,8 +296,8 @@ namespace SharpShares
             Console.WriteLine("[*] Parsed {0} computer objects.", computers.Count);
             ThreadPool.SetMaxThreads(100, 100);
             //GetComputerAddresses(computers);
-            GetAllShares(computers, pubOnly);
-            GetComputerVersions(computers);
+            GetAllShares(computers);
+           // GetComputerVersions(computers);
         }
     }
 }
