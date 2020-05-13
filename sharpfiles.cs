@@ -42,7 +42,7 @@ public class FileSearcher
 	private int _MaxThreads;
 	private string _OutputFile;
 
-	private string[] terms = new string[] {".iso", ".wim", ".vmdk", "pass", "cred", "admin", "login", "logon", ".sql", "secret", "unattend", "sensitive", "root"};
+	private string[] terms = new string[] {".iso", ".vmdk", ".wim", "unattend", "web.config"};
 	
 	private List<string> _FilesFound = new List<string>();
 	
